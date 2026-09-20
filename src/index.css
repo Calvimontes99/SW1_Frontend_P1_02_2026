@@ -1,0 +1,963 @@
+/* Base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   🎨 SISTEMA DE TEMAS - PALETA TECNOLÓGICA MODERNA
+   ============================================ */
+
+:root {
+  /* 🌞 TEMA CLARO */
+  --color-primary: #0A84FF;           /* Azul brillante */
+  --color-primary-rgb: 10, 132, 255;  /* RGB para transparencias */
+  --color-secondary: #1E1E2E;         /* Gris oscuro/azulado */
+  --color-accent: #00E5A0;            /* Verde neón */
+  --color-neutral-light: #F5F7FA;     /* Blanco grisáceo */
+  --color-text-primary: #212121;      /* Gris muy oscuro */
+  --color-text-secondary: #707070;    /* Gris medio */
+  
+  /* Variaciones para diferentes usos */
+  --color-background: #FFFFFF;
+  --color-background-secondary: #F5F7FA;
+  --color-background-tertiary: #EBEEF2;
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-border: #E1E5E9;
+  --color-border-light: #F0F2F5;
+  
+  /* Estados interactivos */
+  --color-primary-hover: #0A7AE4;
+  --color-primary-active: #0970D1;
+  --color-secondary-hover: #2A2A3E;
+  --color-accent-hover: #00D194;
+  --color-accent-active: #00BC85;
+  
+  /* Estados de retroalimentación */
+  --color-success: #00E5A0;
+  --color-warning: #FFB800;
+  --color-error: #FF4757;
+  --color-info: #0A84FF;
+  
+  /* Opacidades */
+  --color-overlay: rgba(33, 33, 33, 0.6);
+  --color-backdrop: rgba(245, 247, 250, 0.95);
+  --color-shadow: rgba(33, 33, 33, 0.1);
+  --color-shadow-elevated: rgba(33, 33, 33, 0.15);
+}
+
+[data-theme="dark"] {
+  /* 🌙 TEMA OSCURO */
+  --color-primary: #0A84FF;           /* Azul brillante (mantener) */
+  --color-primary-rgb: 10, 132, 255;  /* RGB para transparencias */
+  --color-secondary: #F5F7FA;         /* Invertir a claro */
+  --color-accent: #00E5A0;            /* Verde neón (mantener) */
+  --color-neutral-light: #1E1E2E;     /* Invertir a oscuro */
+  --color-text-primary: #F5F7FA;      /* Texto claro */
+  --color-text-secondary: #B0B0B0;    /* Gris claro */
+  
+  /* Variaciones para tema oscuro */
+  --color-background: #0F0F15;
+  --color-background-secondary: #1A1A26;
+  --color-background-tertiary: #252533;
+  --color-surface: #1E1E2E;
+  --color-surface-elevated: #2A2A3E;
+  --color-border: #3A3A4E;
+  --color-border-light: #2F2F3F;
+  
+  /* Estados interactivos para tema oscuro */
+  --color-primary-hover: #1E8EFF;
+  --color-primary-active: #3298FF;
+  --color-secondary-hover: #E5E7EA;
+  --color-accent-hover: #1AE9A6;
+  --color-accent-active: #33EDAC;
+  
+  /* Estados de retroalimentación para tema oscuro */
+  --color-success: #00E5A0;
+  --color-warning: #FFD60A;
+  --color-error: #FF6B7A;
+  --color-info: #64B5F6;
+  
+  /* Opacidades para tema oscuro */
+  --color-overlay: rgba(15, 15, 21, 0.8);
+  --color-backdrop: rgba(30, 30, 46, 0.95);
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-shadow-elevated: rgba(0, 0, 0, 0.5);
+}
+
+/* Transiciones suaves para cambio de tema */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Custom styles */
+@layer components {
+  /* Node styles */
+  .sidebar {
+    @apply transition-all duration-300 ease-in-out backdrop-blur-sm;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  
+  /* 🎨 Estilos mejorados para edges con nueva paleta */
+  .react-flow__edge {
+    cursor: pointer;
+    pointer-events: stroke;
+  }
+
+  .react-flow__edge-path {
+    stroke: var(--color-primary);
+    stroke-width: 2.5;
+    filter: var(--color-shadow);
+    transition: all 0.2s ease;
+  }
+
+  /* Área invisible más grande para clicks */
+  .react-flow__edge-path:first-child {
+    stroke-width: 12px;
+    stroke: transparent;
+    cursor: pointer;
+  }
+
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke: var(--color-primary-hover);
+    stroke-width: 3px;
+    filter: var(--color-shadow-elevated);
+  }
+
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke: var(--color-accent);
+    stroke-width: 3px;
+    filter: drop-shadow(0 2px 6px var(--color-accent));
+  }
+
+/* Mejorar visibilidad de los handles */
+.react-flow__handle {
+  width: 18px !important;
+  height: 18px !important;
+  border: 2px solid #fff !important;
+  background: #555 !important;
+}
+
+.react-flow__handle:hover {
+  background: #3b82f6 !important;
+  cursor: crosshair !important;
+}
+
+/* Handles específicos por posición */
+.react-flow__handle.left-handle {
+  background: #3b82f6 !important; /* Azul para targets */
+}
+
+.react-flow__handle.right-handle {
+  background: #10b981 !important; /* Verde para sources */
+}
+
+.react-flow__handle.top-handle {
+  background: #f59e0b !important; /* Amarillo para top */
+}
+
+.react-flow__handle.bottom-handle {
+  background: #ef4444 !important; /* Rojo para bottom */
+}
+
+/* Estilos para nodos de notas */
+.note-node {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.note-node.selected {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5) !important;
+}
+
+.note-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Estilos mejorados para etiquetas de cardinalidad */
+.react-flow__edge-text {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Animación suave para las etiquetas */
+@keyframes fadeInCardinality {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cardinality-label {
+  animation: fadeInCardinality 0.3s ease-out;
+}  .react-flow__edge-text {
+    font-size: 14px;
+    color: var(--color-primary);
+    font-weight: 600;
+    background: var(--color-backdrop);
+    padding: 6px 10px;
+    border-radius: 6px;
+    box-shadow: var(--color-shadow);
+    backdrop-filter: blur(4px);
+  }
+
+  /* 🎨 Nodos de clase con nueva paleta tecnológica */
+  .class-node {
+    border: 3px solid var(--color-primary);
+    border-radius: 12px;
+    padding: 20px;
+    width: 340px;
+    background: linear-gradient(145deg, var(--color-surface), var(--color-surface-elevated));
+    font-family: 'Inter', system-ui, sans-serif;
+    box-shadow: var(--color-shadow-elevated);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+  }
+  
+  .class-node:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 15px -3px var(--color-primary), var(--color-shadow);
+    border-color: var(--color-accent);
+  }
+  
+  /* Título de la clase */
+  .class-name {
+    font-size: 1.25rem;
+    text-align: center;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: var(--color-primary);
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 8px;
+    letter-spacing: -0.025em;
+  }
+
+  /* Si quieres que “Atributos” y “Métodos” tengan un sub-título más grande */
+  .class-attributes h4,
+  .class-methods h4 {
+    font-size: 1.125rem; /* ~18px */
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  /* El resto de contenido (lista de atributos/métodos) también un poco mayor */
+  .class-attributes ul,
+  .class-methods ul {
+    font-size: 1rem; /* ~16px */
+    line-height: 1.4;
+  }
+
+  .class-section {
+    @apply p-4 border-b-2 border-blue-100 min-h-[40px] last:border-b-0;
+    background: rgba(239, 246, 255, 0.5);
+    border-radius: 6px;
+    margin: 4px 0;
+  }
+
+  .member-item {
+    @apply text-sm py-1.5 flex items-center truncate text-blue-900 hover:text-blue-700 transition-colors duration-200;
+  }
+
+  .visibility-icon {
+    @apply w-6 h-6 inline-flex items-center justify-center font-bold mr-2 text-blue-600 bg-blue-50 rounded-full;
+  }
+
+  .stereotype {
+    @apply text-center text-xs text-blue-600 p-1.5 bg-blue-50 rounded-full font-medium;
+  }
+
+  .edge-label {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(30, 58, 138, 0.95));
+    padding: 8px 12px;
+    color: #ffffff;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+  }
+
+  /* 🎨 Componentes UI modernos con nueva paleta */
+  .button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: var(--color-shadow);
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+  }
+
+  .button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+
+  .button:active {
+    transform: scale(0.98);
+  }
+
+  .button-primary {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-active));
+    color: var(--color-neutral-light);
+  }
+
+  .button-primary:hover {
+    background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
+  }
+
+  .button-secondary {
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+  }
+
+  .button-secondary:hover {
+    background: var(--color-background-tertiary);
+    border-color: var(--color-primary);
+  }
+
+  .input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+  }
+
+  .input:hover {
+    border-color: var(--color-primary);
+  }
+
+  /* 🎨 Estilos de modal con nueva paleta */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--color-overlay);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+
+  .modal-content {
+    background: var(--color-surface);
+    border-radius: 12px;
+    box-shadow: var(--color-shadow-elevated);
+    max-width: 500px;
+    width: 100%;
+    border: 1px solid var(--color-border);
+  }
+
+  .modal-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--color-border);
+    background: linear-gradient(135deg, var(--color-background-secondary), var(--color-surface));
+  }
+
+  /* 🎨 Componentes de layout con nueva paleta */
+  .sidebar {
+    width: 320px;
+    background: var(--color-background-secondary);
+    border-right: 1px solid var(--color-border);
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .main-content {
+    flex: 1;
+    position: relative;
+    background: var(--color-background);
+  }
+
+  /* 🎨 Clases de utilidad específicas del proyecto */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-active));
+    color: var(--color-neutral-light);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover {
+    /* Preserve original background color/gradient on hover to avoid flashing to white */
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+
+  .btn-secondary {
+    background: var(--color-surface-elevated);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-secondary:hover {
+    /* Keep the original background (including gradients) on hover. Only apply subtle lift and optional border highlight. */
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+  }
+
+  .btn-accent {
+    background: linear-gradient(135deg, var(--color-accent), #2b6cb0);
+    color: var(--color-neutral-light);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-accent:hover {
+    background: linear-gradient(135deg, #2b6cb0, var(--color-accent));
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+
+  .input-modern {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .input-modern:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+  }
+
+  .select-modern {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .select-modern:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+  }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: var(--color-shadow);
+    transition: all 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: var(--color-shadow-elevated);
+    transform: translateY(-1px);
+  }
+
+  /* 🌙🌞 Estilos para el toggle de tema */
+  .theme-toggle-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--color-surface-elevated);
+    border: 2px solid var(--color-border);
+    border-radius: 50px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .theme-toggle-button:hover {
+    background: var(--color-primary);
+    color: var(--color-neutral-light);
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+
+  .theme-toggle-button:active {
+    transform: scale(0.98);
+  }
+
+  .theme-toggle-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    transition: all 0.3s ease;
+  }
+
+  .theme-toggle-button:hover .theme-toggle-inner {
+    background: var(--color-neutral-light);
+    transform: rotate(180deg);
+  }
+
+  .theme-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--color-text-primary);
+    transition: all 0.3s ease;
+  }
+
+  .theme-toggle-button:hover .theme-icon {
+    color: var(--color-primary);
+  }
+
+  .theme-toggle-text {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* Animación especial para el cambio de tema */
+  @keyframes themeChange {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; transform: scale(0.98); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .theme-changing {
+    animation: themeChange 0.3s ease;
+  }
+
+  /* 🎨 Estilos para la navbar con nueva paleta */
+  .nav-link-modern {
+    color: var(--color-neutral-light);
+    background: transparent;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+
+  .nav-link-modern:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .btn-danger-modern {
+    background: linear-gradient(135deg, var(--color-error), #E63946);
+    color: var(--color-neutral-light);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-danger-modern:hover {
+    background: linear-gradient(135deg, #E63946, #C53030);
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+
+  .btn-login-modern {
+    background: var(--color-neutral-light);
+    color: var(--color-primary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+  }
+
+  .btn-login-modern:hover {
+    background: var(--color-accent);
+    color: var(--color-background);
+    border-color: var(--color-accent);
+    transform: translateY(-1px);
+    box-shadow: var(--color-shadow-elevated);
+  }
+    .button-danger {
+      @apply bg-red-600 text-white hover:bg-red-700;
+    }
+    .select {
+      @apply w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500;
+    }
+    .label {
+      @apply block text-sm font-medium text-gray-700 mb-1;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50;
+    }
+
+    .modal-content {
+      @apply bg-white rounded-lg shadow-xl max-w-lg w-full;
+    }
+
+    .modal-header {
+      @apply px-6 py-4 border-b border-gray-200;
+    }
+
+    .modal-body {
+      @apply px-6 py-4;
+    }
+
+    /* Layout components */
+    .sidebar {
+      @apply w-80 bg-gray-50 border-r border-gray-200 h-screen overflow-y-auto;
+    }
+
+    .main-content {
+      @apply flex-1 relative;
+    }
+
+    /* Navigation */
+    .nav-link {
+      @apply text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium;
+    }
+
+    .nav-button {
+      @apply px-4 py-2 rounded-md text-sm font-medium;
+    }
+
+    /* Modern Buttons */
+    .btn-primary {
+      @apply px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 
+             text-white rounded-lg font-medium shadow-md hover:shadow-lg 
+             transform hover:-translate-y-0.5 transition-all duration-200 
+             flex items-center gap-2 hover:from-purple-700 hover:to-indigo-700;
+    }
+    .btn-secondary {
+      @apply px-4 py-2.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-lg font-medium border border-gray-300 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 hover:bg-gray-100;
+    }
+    .btn-success {
+      @apply px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 hover:from-green-600 hover:to-green-700;
+    }
+    
+    .btn-danger {
+      @apply px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 hover:from-red-600 hover:to-red-700;
+    }
+
+    /* Modern Containers */
+    .card-container {
+      @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-100 p-6;
+    }
+
+    .header-container {
+      @apply flex justify-between items-center gap-4 mb-6 bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-100 shadow-sm;
+    }
+
+    /* List styles */
+    .board-item {
+      @apply flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-3 hover:bg-white hover:shadow-md transition-all duration-200 border border-gray-100;
+    }
+
+    /* Estos campos siempre tienen fondo blanco, así que el texto va oscuro fijo.
+       La definición anterior usa var(--color-text-primary), que en tema oscuro es
+       casi blanco: quedaba texto blanco sobre blanco. */
+    .input-modern {
+      @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg
+             focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+             bg-white shadow-sm transition-all duration-200
+             hover:shadow-md;
+      color: #111827;
+    }
+    .select-modern {
+      @apply w-full px-3 py-2 border border-gray-300 rounded
+             focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+             bg-white shadow-sm hover:shadow-md;
+      color: #111827;
+    }
+    .input-modern::placeholder {
+      color: #6b7280;
+    }
+  }
+
+/* ============================================
+   📜 BARRAS DE SCROLL PERSONALIZADAS
+   ============================================ */
+
+/* Scrollbar para WebKit (Chrome, Safari, Edge) */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+/* Para Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6;
+}
+
+/* ============================================
+   🎙️ EFECTOS DE GRABACIÓN DE VOZ
+   ============================================ */
+
+@keyframes pulse-recording {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-recording {
+  animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-wave {
+  animation: wave 1s ease-in-out infinite;
+}
+
+/* ============================================================
+   MODO OSCURO EN TODA LA APLICACIÓN
+   La interfaz está escrita con clases de Tailwind de color fijo
+   (bg-white, text-gray-700, border-gray-200…), que no cambian con
+   el tema. Aquí esas clases se reasignan a las variables del tema,
+   de modo que el interruptor oscurezca la aplicación completa.
+   ============================================================ */
+[data-theme="dark"] body,
+[data-theme="dark"] #root {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+/* Superficies */
+[data-theme="dark"] .bg-white { background-color: var(--color-surface) !important; }
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100 { background-color: var(--color-background-secondary) !important; }
+[data-theme="dark"] .bg-gray-200,
+[data-theme="dark"] .bg-gray-300 { background-color: var(--color-background-tertiary) !important; }
+
+/* Textos */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-700 { color: var(--color-text-primary) !important; }
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400 { color: var(--color-text-secondary) !important; }
+
+/* Bordes y separadores */
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-b,
+[data-theme="dark"] .border-t,
+[data-theme="dark"] .border-l,
+[data-theme="dark"] .border-r,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 { border-color: var(--color-border) !important; }
+
+/* Avisos y paneles de color suave: se oscurecen conservando su tono */
+[data-theme="dark"] .bg-blue-50 { background-color: rgba(10, 132, 255, 0.12) !important; }
+[data-theme="dark"] .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14) !important; }
+[data-theme="dark"] .bg-purple-50 { background-color: rgba(168, 85, 247, 0.14) !important; }
+[data-theme="dark"] .bg-green-50 { background-color: rgba(0, 229, 160, 0.12) !important; }
+[data-theme="dark"] .bg-yellow-50,
+[data-theme="dark"] .bg-amber-50 { background-color: rgba(255, 184, 0, 0.14) !important; }
+[data-theme="dark"] .bg-red-50 { background-color: rgba(255, 71, 87, 0.14) !important; }
+[data-theme="dark"] .text-blue-800,
+[data-theme="dark"] .text-indigo-800,
+[data-theme="dark"] .text-purple-800 { color: #a5c8ff !important; }
+[data-theme="dark"] .text-green-800 { color: #6ee7b7 !important; }
+[data-theme="dark"] .text-yellow-800,
+[data-theme="dark"] .text-amber-900 { color: #fcd34d !important; }
+[data-theme="dark"] .text-red-800 { color: #fca5a5 !important; }
+[data-theme="dark"] .bg-green-100 { background-color: rgba(0, 229, 160, 0.18) !important; }
+[data-theme="dark"] .bg-yellow-100 { background-color: rgba(255, 184, 0, 0.18) !important; }
+[data-theme="dark"] .bg-amber-100 { background-color: rgba(255, 184, 0, 0.18) !important; }
+
+/* Formularios */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--color-text-secondary); }
+
+/* Lienzo del diagrama */
+[data-theme="dark"] .react-flow { background-color: var(--color-background); }
+[data-theme="dark"] .react-flow__background path,
+[data-theme="dark"] .react-flow__background circle { color: var(--color-border); }
+[data-theme="dark"] .react-flow__controls-button {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  fill: var(--color-text-primary);
+}
+[data-theme="dark"] .react-flow__controls-button:hover { background: var(--color-background-tertiary); }
+[data-theme="dark"] .react-flow__minimap { background-color: var(--color-surface); }
+[data-theme="dark"] .react-flow__edge-text { fill: var(--color-text-primary); }
+[data-theme="dark"] .react-flow__edge-textbg { fill: var(--color-surface); }
+
+/* Ventanas de aviso (SweetAlert2) */
+[data-theme="dark"] .swal2-popup {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+[data-theme="dark"] .swal2-title,
+[data-theme="dark"] .swal2-html-container { color: var(--color-text-primary) !important; }
+[data-theme="dark"] .swal2-input,
+[data-theme="dark"] .swal2-textarea,
+[data-theme="dark"] .swal2-select {
+  background: var(--color-surface-elevated) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* Barras de desplazamiento */
+[data-theme="dark"] .scrollbar-thin::-webkit-scrollbar-track { background: var(--color-background-secondary); }
+[data-theme="dark"] .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-border); }
+
+/* Clases propias de la aplicación (.card-container, .btn-secondary…): están escritas con
+   colores fijos de Tailwind y ganan sobre las variables, así que se reescriben para el tema oscuro. */
+[data-theme="dark"] .card-container {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .header-container {
+  background: linear-gradient(to right, var(--color-background-secondary), var(--color-surface)) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .board-item {
+  background: var(--color-background-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .board-item:hover { background: var(--color-background-tertiary) !important; }
+[data-theme="dark"] .btn-secondary {
+  background: var(--color-background-tertiary) !important;
+  background-image: none !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .btn-secondary:hover { background: var(--color-surface-elevated) !important; }
+[data-theme="dark"] .modal-content {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+[data-theme="dark"] .modal-header { border-color: var(--color-border) !important; }
+[data-theme="dark"] .sidebar {
+  background: var(--color-background-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .nav-link,
+[data-theme="dark"] .label { color: var(--color-text-primary) !important; }
+[data-theme="dark"] .input-modern,
+[data-theme="dark"] .select-modern,
+[data-theme="dark"] .select {
+  background: var(--color-surface-elevated) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}

@@ -1,0 +1,26 @@
+# En Render el frontend se compila dentro del servicio del backend (ver render.yaml del repo
+# S1_2_2026_backend). Un push aquí no llega solo a Render: este workflow llama al Deploy Hook
+# del servicio para que vuelva a compilar con la última versión del frontend.
+# Configurar una vez: Render > servicio > Settings > Deploy Hook, copiar la URL y guardarla en
+# GitHub > este repo > Settings > Secrets and variables > Actions como RENDER_DEPLOY_HOOK_URL.
+name: Desplegar en Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al Deploy Hook de Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::notice::Falta el secreto RENDER_DEPLOY_HOOK_URL; no se despliega."
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Despliegue solicitado a Render."
