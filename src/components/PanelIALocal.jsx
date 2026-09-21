@@ -7,7 +7,9 @@ import {
 import { modeloDescargado, prepararModelo } from '../ia-local/motorIA.js';
 import { iaNubeDisponible, olvidarEstadoNube } from '../ia-local/asistenteLocal.js';
 import { EJEMPLOS_ORDENES } from '../ia-local/interpreteOrdenes.js';
-import { estadoOllama, modeloOllamaPorDefecto, olvidarEstadoOllama } from '../ia-local/ollama.js';
+import {
+  estadoOllama, guionInstalacion, modeloOllamaPorDefecto, modeloSugeridoOllama, olvidarEstadoOllama,
+} from '../ia-local/ollama.js';
 
 const mb = (bytes) => `${Math.round((bytes || 0) / 1048576)} MB`;
 
@@ -34,6 +36,28 @@ export default function PanelIALocal({ onCerrar, onCambio }) {
     if (/Windows/i.test(s)) return 'https://ollama.com/download/OllamaSetup.exe';
     if (/Mac/i.test(s)) return 'https://ollama.com/download/Ollama-darwin.zip';
     return 'https://ollama.com/download';
+  };
+
+  /**
+   * Descarga un instalador listo para ejecutar. El navegador no puede instalar programas por sí
+   * mismo, así que entrega este archivo: al abrirlo instala Ollama, autoriza esta página y
+   * descarga el modelo que corresponde a este equipo.
+   */
+  const descargarInstalador = () => {
+    const windows = /Windows/i.test(navigator.userAgent);
+    const guion = guionInstalacion({
+      origen: window.location.origin,
+      modelo: modeloSugeridoOllama(capacidades),
+      windows,
+    });
+    const url = URL.createObjectURL(new Blob([guion.contenido], { type: `${guion.tipo};charset=utf-8` }));
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = guion.nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   const copiar = async (texto, que) => {
@@ -317,13 +341,20 @@ export default function PanelIALocal({ onCerrar, onCambio }) {
             <div>No se detectó Ollama en este equipo ({ollama.motivo}). Es opcional: sin él se usa el modelo del navegador.</div>
 
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={descargarInstalador}
+                className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+              >
+                ⬇️ Instalar Ollama automáticamente
+              </button>
               <a
                 href={descargaOllama()}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+                className="px-3 py-1.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
               >
-                ⬇️ Descargar Ollama
+                Instalador oficial
               </a>
               <button
                 type="button"
@@ -342,19 +373,31 @@ export default function PanelIALocal({ onCerrar, onCambio }) {
             </div>
             {copiado && <div className="text-green-700">Copiado: {copiado}. Pégalo en una terminal.</div>}
 
-            <div>Pasos, una sola vez:</div>
-            <ol className="list-decimal pl-4 space-y-1">
-              <li>Instala Ollama con el botón de arriba y ábrelo (queda en la bandeja del sistema).</li>
-              <li>
-                En una terminal, descarga un modelo:
-                <code className="block mt-1 p-1 bg-gray-100 rounded text-gray-800">ollama pull llama3.2</code>
-              </li>
-              <li>
-                Permite que esta página lo use y vuelve a abrir Ollama:
-                <code className="block mt-1 p-1 bg-gray-100 rounded text-gray-800 break-all">setx OLLAMA_ORIGINS "{window.location.origin}"</code>
-              </li>
-              <li>Vuelve aquí y pulsa «Volver a comprobar».</li>
-            </ol>
+            <div className="p-2 rounded bg-indigo-50 border border-indigo-200 text-indigo-900">
+              <div className="font-semibold">Con el botón azul: un archivo y un doble clic</div>
+              <div className="mt-1">
+                Se descarga <span className="font-mono">{/Windows/i.test(navigator.userAgent) ? 'instalar-ollama.bat' : 'instalar-ollama.sh'}</span>.
+                Al abrirlo, instala Ollama, lo autoriza para esta página y descarga el modelo
+                <span className="font-mono"> {modeloSugeridoOllama(capacidades)}</span>, elegido para tu equipo.
+                Windows pedirá permiso de administrador: acéptalo. Al terminar, vuelve aquí y pulsa «Volver a comprobar».
+              </div>
+            </div>
+
+            <details>
+              <summary className="cursor-pointer font-semibold text-gray-700">Prefiero hacerlo a mano</summary>
+              <ol className="list-decimal pl-4 space-y-1 mt-1">
+                <li>Instala Ollama con «Instalador oficial» y ábrelo (queda en la bandeja del sistema).</li>
+                <li>
+                  En una terminal, descarga un modelo:
+                  <code className="block mt-1 p-1 bg-gray-100 rounded text-gray-800">ollama pull {modeloSugeridoOllama(capacidades)}</code>
+                </li>
+                <li>
+                  Permite que esta página lo use y vuelve a abrir Ollama:
+                  <code className="block mt-1 p-1 bg-gray-100 rounded text-gray-800 break-all">setx OLLAMA_ORIGINS "{window.location.origin}"</code>
+                </li>
+                <li>Vuelve aquí y pulsa «Volver a comprobar».</li>
+              </ol>
+            </details>
             <div className="text-gray-500">
               El modelo queda guardado en tu equipo: no se descarga otra vez en cada navegador y usa tu tarjeta gráfica.
             </div>
