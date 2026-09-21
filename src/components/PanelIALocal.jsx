@@ -340,6 +340,19 @@ export default function PanelIALocal({ onCerrar, onCambio }) {
           <div className="text-xs text-gray-600 space-y-2">
             <div>No se detectó Ollama en este equipo ({ollama.motivo}). Es opcional: sin él se usa el modelo del navegador.</div>
 
+            {ollama.bloqueoDelNavegador && (
+              <div className="p-2 rounded bg-amber-50 border border-amber-200 text-amber-900">
+                <div className="font-semibold">Puede que Ollama sí esté corriendo y el navegador lo esté bloqueando</div>
+                <div className="mt-1">
+                  Esta página está en internet y, por seguridad, el navegador no deja que hable con programas de tu
+                  equipo hasta que le des permiso. Haz clic en el <strong>candado</strong> de la barra de direcciones →
+                  <strong> Configuración del sitio</strong> → <strong>Acceso a la red local</strong> → <strong>Permitir</strong>,
+                  recarga la página y vuelve a comprobar. Si no aparece esa opción, tu navegador aún no lo admite: usa el
+                  modelo del navegador, que no necesita permisos.
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

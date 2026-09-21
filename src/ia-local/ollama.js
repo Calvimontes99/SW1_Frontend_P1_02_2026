@@ -44,11 +44,15 @@ export const estadoOllama = async ({ forzar = false } = {}) => {
       estado = { disponible: true, modelos, motivo: null };
     }
   } catch (error) {
-    // AbortError = no contesta nadie; TypeError = el navegador bloqueó la petición
+    // AbortError = no contesta nadie; TypeError desde una página https suele ser el navegador
+    // bloqueando el acceso a los programas del equipo, no un problema de Ollama.
+    const bloqueoDelNavegador = error.name !== 'AbortError'
+      && typeof window !== 'undefined' && window.location.protocol === 'https:';
     estado = {
       disponible: false,
       modelos: [],
       motivo: error.name === 'AbortError' ? 'No respondió a tiempo' : 'No se pudo conectar',
+      bloqueoDelNavegador,
     };
   }
   ultimaRevision = { cuando: Date.now(), estado };
@@ -126,8 +130,10 @@ export const guionInstalacion = ({ origen, modelo, windows = true }) => {
         'echo [3/5] Permitiendo que la aplicacion use Ollama...',
         `setx OLLAMA_ORIGINS "${origen}" >nul`,
         `set "OLLAMA_ORIGINS=${origen}"`,
-        'echo [4/5] Iniciando Ollama...',
-        'start "" "%LOCALAPPDATA%\\Programs\\Ollama\\ollama app.exe"',
+        'echo [4/5] Iniciando Ollama con el permiso aplicado...',
+        // Windows no refresca el entorno de los programas ya abiertos: el servidor se arranca
+        // desde aqui, que ya tiene la variable, en vez de depender del icono de la bandeja.
+        'start "" /B "%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe" serve',
         'timeout /t 8 /nobreak >nul',
         `echo [5/5] Descargando el modelo ${modelo} (puede tardar varios minutos)...`,
         `"%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe" pull ${modelo}`,
