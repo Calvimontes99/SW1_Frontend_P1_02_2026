@@ -68,8 +68,83 @@ export const modeloOllamaPorDefecto = (modelos = []) => {
   return (preferido || modelos[0]).nombre;
 };
 
-/** Genera texto con Ollama. Los mensajes son los mismos que usa el modelo del navegador. */
+// ------------------------------------------------------------------ modelos que ven imágenes
+
+// Familias multimodales de Ollama. Se usa como respaldo: lo que manda es lo que declare
+// /api/show, porque la lista de modelos con vista cambia a menudo.
+const NOMBRE_CON_VISTA = /llava|bakllava|vl\b|-vl|vision|minicpm-v|moondream|gemma3|granite3\.\d-vision|mistral-small3/i;
+
+/** Orden de preferencia para leer un diagrama: primero los que mejor leen texto dentro de la imagen. */
+const PREFERENCIA_VISTA = [/qwen2\.?5vl|qwen2-vl/i, /minicpm-v/i, /gemma3/i, /llava/i, /llama3\.2-vision/i, /mistral-small3/i, /moondream/i];
+
+const vistaDeclarada = new Map();
+
+/**
+ * ¿Este modelo instalado acepta imágenes? Ollama lo dice en /api/show ("capabilities"),
+ * y en las versiones viejas se deduce del nombre y de la familia del proyector.
+ */
+export const modeloVeImagenes = async (nombre) => {
+  if (!nombre) return false;
+  if (vistaDeclarada.has(nombre)) return vistaDeclarada.get(nombre);
+  let vista = NOMBRE_CON_VISTA.test(nombre);
+  try {
+    const respuesta = await consultar('/api/show', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: nombre }),
+    }, 4000);
+    if (respuesta.ok) {
+      const datos = await respuesta.json();
+      const capacidades = (datos.capabilities || []).map((c) => String(c).toLowerCase());
+      const familias = (datos.details?.families || []).map((f) => String(f).toLowerCase());
+      if (capacidades.length) vista = capacidades.includes('vision');
+      else if (familias.some((f) => ['clip', 'mllama', 'qwen2vl', 'gemma3'].includes(f))) vista = true;
+    }
+  } catch {
+    // Sin respuesta se queda con lo que diga el nombre
+  }
+  vistaDeclarada.set(nombre, vista);
+  return vista;
+};
+
+/** Modelos instalados que aceptan imágenes, ya ordenados por lo bien que leen un diagrama. */
+export const modelosConVista = async (modelos = []) => {
+  const marcados = await Promise.all(modelos.map(async (m) => ({ ...m, vista: await modeloVeImagenes(m.nombre) })));
+  const conVista = marcados.filter((m) => m.vista);
+  const puesto = (nombre) => {
+    const i = PREFERENCIA_VISTA.findIndex((patron) => patron.test(nombre));
+    return i === -1 ? PREFERENCIA_VISTA.length : i;
+  };
+  return conVista.sort((a, b) => puesto(a.nombre) - puesto(b.nombre));
+};
+
+/** El mejor modelo instalado para leer una imagen, o null si no hay ninguno. */
+export const modeloVistaPorDefecto = async (modelos = []) => {
+  const conVista = await modelosConVista(modelos);
+  return conVista.length ? conVista[0].nombre : null;
+};
+
+/**
+ * Modelo con vista recomendado para este equipo. Los de 7B leen bastante mejor el texto
+ * dentro de una foto, pero piden memoria; en equipos modestos va uno de 3B o 4B.
+ */
+export const modeloVistaSugerido = (capacidades) => {
+  const memoriaGB = capacidades?.memoriaGB ?? 8;
+  const dedicada = /nvidia|geforce|rtx|gtx|quadro|radeon rx|\barc\b|apple/i.test(capacidades?.adaptador || '');
+  if (dedicada && memoriaGB >= 16) return 'qwen2.5vl:7b';
+  if (memoriaGB >= 8) return 'gemma3:4b';
+  return 'moondream';
+};
+
+/**
+ * Genera texto con Ollama. Los mensajes son los mismos que usa el modelo del navegador.
+ *
+ * Un mensaje puede llevar `images: ['<base64 sin el prefijo data:>']`: los modelos con vista
+ * leen la imagen y responden sobre ella. Leer una imagen tarda mucho más que responder texto,
+ * así que la espera es más larga cuando alguna la trae.
+ */
 export const generarConOllama = async (mensajes, modelo, { temperatura = 0.2, maxTokens = 512 } = {}) => {
+  const conImagen = mensajes.some((m) => Array.isArray(m.images) && m.images.length);
   const respuesta = await consultar('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -79,7 +154,7 @@ export const generarConOllama = async (mensajes, modelo, { temperatura = 0.2, ma
       stream: false,
       options: { temperature: temperatura, num_predict: maxTokens },
     }),
-  }, 120000);
+  }, conImagen ? 420000 : 120000);
   if (!respuesta.ok) {
     const detalle = await respuesta.text().catch(() => '');
     throw new Error(`Ollama no pudo responder (${respuesta.status}). ${detalle.slice(0, 120)}`);
@@ -104,7 +179,16 @@ export const modeloSugeridoOllama = (capacidades) => {
  * Script que instala Ollama, autoriza esta página y descarga el modelo, todo de una pasada.
  * El navegador no puede instalar programas: entrega este archivo y el usuario lo ejecuta.
  */
-export const guionInstalacion = ({ origen, modelo, windows = true }) => {
+export const guionInstalacion = ({ origen, modelo, modeloVista = null, windows = true }) => {
+  // El modelo con vista es el que lee una foto del diagrama sin internet; se descarga aparte
+  // porque pesa más y no todos lo necesitan.
+  const pasoVistaWindows = modeloVista
+    ? [`echo [6/6] Descargando el modelo con vista ${modeloVista} (para leer imagenes sin internet)...`,
+      `"%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe" pull ${modeloVista}`]
+    : [];
+  const pasoVistaUnix = modeloVista
+    ? [`echo "[4/4] Descargando el modelo con vista ${modeloVista}..."`, `ollama pull ${modeloVista}`]
+    : [];
   if (windows) {
     return {
       nombre: 'instalar-ollama.bat',
@@ -137,6 +221,7 @@ export const guionInstalacion = ({ origen, modelo, windows = true }) => {
         'timeout /t 8 /nobreak >nul',
         `echo [5/5] Descargando el modelo ${modelo} (puede tardar varios minutos)...`,
         `"%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe" pull ${modelo}`,
+        ...pasoVistaWindows,
         'echo.',
         'echo Listo. Vuelve al navegador y pulsa "Volver a comprobar".',
         'pause',
@@ -162,6 +247,7 @@ export const guionInstalacion = ({ origen, modelo, windows = true }) => {
       'sleep 5',
       `echo "[3/3] Descargando el modelo ${modelo}..."`,
       `ollama pull ${modelo}`,
+      ...pasoVistaUnix,
       'echo "Listo. Vuelve al navegador y pulsa Volver a comprobar."',
       `echo 'Para que quede permanente agrega: export OLLAMA_ORIGINS="${origen}"'`,
       ''

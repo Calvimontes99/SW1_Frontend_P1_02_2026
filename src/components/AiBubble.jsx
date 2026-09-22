@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { generateDiagram, modifyDiagram } from '../utils/aiService';
 import PanelIALocal from './PanelIALocal';
-import { iaNubeDisponible, resolverConIALocal, transcribirConIALocal } from '../ia-local/asistenteLocal.js';
+import { iaNubeDisponible, leerImagenConIALocal, resolverConIALocal, transcribirConIALocal } from '../ia-local/asistenteLocal.js';
 import { EJEMPLOS_ORDENES } from '../ia-local/interpreteOrdenes.js';
 import { mensajeDeError } from '../utils/mensajesError';
 
@@ -398,6 +398,72 @@ export default function AiBubble({ boardId, nodes, edges, setNodes, setEdges, up
 
   const actualizarMotor = async () => setMotorIA((await iaNubeDisponible()) ? 'nube' : 'local');
 
+  /** Lee el archivo elegido como base64, que es lo que espera el modelo con vista. */
+  const comoBase64 = (archivo) => new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onerror = () => reject(new Error('No se pudo leer el archivo de imagen.'));
+    lector.onload = () => resolve(String(lector.result || ''));
+    lector.readAsDataURL(archivo);
+  });
+
+  /**
+   * Sin conexión, la foto del diagrama la lee un modelo con vista de Ollama en este equipo.
+   * Se procesa una imagen por vez: leer una imagen es lento y encadenarlas satura el equipo.
+   */
+  const ejecutarImagenLocal = async (texto) => {
+    const lote = imagenes;
+    if (!lote.length) return;
+    setMotorIA('local');
+    pushMessage({
+      role: 'user',
+      text: texto || (lote.length === 1 ? 'Lee esta imagen sin conexión' : `Lee estas ${lote.length} imágenes sin conexión`),
+      imagenes: lote.map((i) => ({ url: i.url, nombre: i.file.name })),
+    });
+    setInput('');
+    setLoading(true);
+    let actuales = { nodes: nodes || [], edges: edges || [] };
+    try {
+      for (let i = 0; i < lote.length; i++) {
+        if (lote.length > 1) pushMessage({ role: 'ai', text: `Leyendo la imagen ${i + 1} de ${lote.length}…` });
+        const r = await leerImagenConIALocal({
+          imagen: await comoBase64(lote[i].file),
+          texto,
+          nodes: actuales.nodes,
+          edges: actuales.edges,
+        });
+        if (!r.disponible) {
+          pushMessage({ role: 'ai', text: r.motivo, abrirPanel: true });
+          break;
+        }
+        if (r.cambios > 0) {
+          actuales = { nodes: r.nodes, edges: r.edges };
+          setNodes(r.nodes);
+          setEdges(r.edges);
+          if (typeof updateBoardData === 'function') await updateBoardData(r.nodes, r.edges);
+        }
+        const lineas = [];
+        if (r.cambios > 0) {
+          lineas.push(`💻 Leído sin internet con Ollama · ${r.modeloUsado}:`);
+          r.resumen.forEach((x) => lineas.push(`• ${x}`));
+          lineas.push('Revisa las relaciones y las cardinalidades: un modelo local las falla más que los nombres.');
+        } else if (r.motivo) {
+          lineas.push(r.motivo);
+        }
+        (r.avisos || []).forEach((a) => lineas.push(`⚠️ ${a}`));
+        if (r.noEntendidas?.length) lineas.push(`No entendí: ${r.noEntendidas.map((f) => `"${f}"`).join(', ')}.`);
+        pushMessage({ role: 'ai', text: lineas.join('\n') || 'No hubo cambios en el diagrama.' });
+      }
+      // Las URL de vista previa siguen usándose en el historial del chat: se marcan enviadas
+      setImagenes((previas) => { previas.forEach((i) => { i.enviada = true; }); return []; });
+      setMode('text');
+    } catch (err) {
+      console.error('IA local con imagen', err);
+      pushMessage({ role: 'ai', text: `No se pudo leer la imagen sin conexión. ${mensajeDeError(err, 'Intenta con una foto más nítida.')}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (open) actualizarMotor();
   }, [open]);
@@ -444,8 +510,7 @@ export default function AiBubble({ boardId, nodes, edges, setNodes, setEdges, up
     if (mode === 'voice') return enviarVoz();
     if (mode === 'image') {
       if (await iaNubeDisponible()) return handleSendNube();
-      pushMessage({ role: 'ai', text: 'El modo Imagen necesita la IA en la nube y ahora no hay conexión. Usa Texto, Voz o Editar.' });
-      return;
+      return ejecutarImagenLocal(input.trim());
     }
     const texto = input.trim();
     if (!texto) return;

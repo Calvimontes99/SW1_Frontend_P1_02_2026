@@ -8,9 +8,9 @@
  *   3. si no hay modelo descargado, se aplica lo que el intérprete sí entendió.
  */
 import { interpretar, aplicarOperaciones } from './interpreteOrdenes.js';
-import { construirMensajes, limpiarRespuesta } from './promptOrdenes.js';
+import { construirMensajes, construirMensajesImagen, limpiarRespuesta } from './promptOrdenes.js';
 import { modeloTextoActual, modeloVozActual, nivelActual, preferenciasIA } from './configuracionIA.js';
-import { estadoOllama, generarConOllama, modeloOllamaPorDefecto } from './ollama.js';
+import { estadoOllama, generarConOllama, modeloOllamaPorDefecto, modeloVistaPorDefecto } from './ollama.js';
 import { generarTexto, modeloDescargado, transcribirAudio } from './motorIA.js';
 
 // En desarrollo vienen de .env.development; en producción el backend sirve la app (mismo origen)
@@ -119,6 +119,53 @@ export const resolverConIALocal = async ({ texto, nodes = [], edges = [], alProg
     errorModelo,
     modeloDisponible: Boolean(config && await modeloDescargado(config)),
     nivel,
+  };
+};
+
+/** Separa "data:image/png;base64,AAAA" en lo que Ollama espera recibir. */
+const soloBase64 = (dato) => String(dato || '').replace(/^data:[^;]+;base64,/, '');
+
+/**
+ * Lee la foto de un diagrama con un modelo con vista de Ollama, sin internet.
+ *
+ * Devuelve `{ disponible: false, motivo }` cuando no hay Ollama o no hay ningún modelo que
+ * acepte imágenes, para que quien llame pueda explicarlo en lugar de fallar.
+ *
+ * Aviso honesto: un modelo local de 4B o 7B lee bien los nombres de las clases y sus
+ * atributos, pero se equivoca seguido con las relaciones y las cardinalidades. Sirve para
+ * adelantar el trabajo sin conexión; con internet, la IA de la nube lee mucho mejor.
+ */
+export const leerImagenConIALocal = async ({ imagen, texto = '', nodes = [], edges = [] }) => {
+  const { motorTexto = 'auto', modeloVistaOllama } = preferenciasIA();
+  if (motorTexto === 'navegador') {
+    return { disponible: false, motivo: 'La lectura de imágenes sin conexión usa Ollama, y está desactivado en las preferencias.' };
+  }
+  const ollama = await estadoOllama();
+  if (!ollama.disponible) {
+    return { disponible: false, motivo: 'Para leer imágenes sin conexión hace falta Ollama en este equipo.', bloqueoDelNavegador: ollama.bloqueoDelNavegador };
+  }
+  const elegido = modeloVistaOllama && ollama.modelos.some((m) => m.nombre === modeloVistaOllama)
+    ? modeloVistaOllama
+    : await modeloVistaPorDefecto(ollama.modelos);
+  if (!elegido) {
+    return { disponible: false, motivo: 'Ninguno de los modelos instalados en Ollama lee imágenes. Descarga uno con vista, por ejemplo: ollama pull qwen2.5vl:7b' };
+  }
+  const mensajes = construirMensajesImagen(soloBase64(imagen), nodes, edges, texto);
+  const respuesta = await generarConOllama(mensajes, elegido, { maxTokens: 900 });
+  const ordenes = limpiarRespuesta(respuesta);
+  const traducido = interpretar(ordenes);
+  if (!traducido.operaciones.length) {
+    return { disponible: true, modeloUsado: elegido, ordenes, cambios: 0, nodes, edges, resumen: [], avisos: [],
+      motivo: 'El modelo no reconoció clases en la imagen. Prueba con una foto más nítida o recorta el diagrama.' };
+  }
+  const operaciones = sinAsociacionesRepetidas(traducido.operaciones);
+  return {
+    ...aplicarOperaciones(operaciones, { nodes, edges }),
+    disponible: true,
+    motor: 'ollama-vista',
+    modeloUsado: elegido,
+    ordenes,
+    noEntendidas: traducido.noEntendidas,
   };
 };
 

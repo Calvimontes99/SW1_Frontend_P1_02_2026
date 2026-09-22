@@ -8,7 +8,7 @@ import { modeloDescargado, prepararModelo } from '../ia-local/motorIA.js';
 import { iaNubeDisponible, olvidarEstadoNube } from '../ia-local/asistenteLocal.js';
 import { EJEMPLOS_ORDENES } from '../ia-local/interpreteOrdenes.js';
 import {
-  estadoOllama, guionInstalacion, modeloOllamaPorDefecto, modeloSugeridoOllama, olvidarEstadoOllama,
+  estadoOllama, guionInstalacion, modeloOllamaPorDefecto, modeloSugeridoOllama, modeloVistaSugerido, olvidarEstadoOllama,
 } from '../ia-local/ollama.js';
 
 const mb = (bytes) => `${Math.round((bytes || 0) / 1048576)} MB`;
@@ -48,6 +48,8 @@ export default function PanelIALocal({ onCerrar, onCambio }) {
     const guion = guionInstalacion({
       origen: window.location.origin,
       modelo: modeloSugeridoOllama(capacidades),
+      // Segundo modelo: el que lee una foto del diagrama cuando no hay internet
+      modeloVista: modeloVistaSugerido(capacidades),
       windows,
     });
     const url = URL.createObjectURL(new Blob([guion.contenido], { type: `${guion.tipo};charset=utf-8` }));

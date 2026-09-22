@@ -75,6 +75,35 @@ export const construirMensajes = (pedido, nodes = [], edges = []) => [
   { role: 'user', content: `Pedido: ${pedido}` },
 ];
 
+/**
+ * Mensajes para un modelo con vista (Ollama). Devuelve las mismas órdenes de una línea que el
+ * modelo de texto, así el intérprete y la validación son los mismos para foto, voz y texto.
+ *
+ * `imagenBase64` va sin el prefijo "data:image/...;base64,", que es como lo espera Ollama.
+ */
+export const construirMensajesImagen = (imagenBase64, nodes = [], edges = [], pedido = '') => [
+  {
+    role: 'system',
+    content: `${SISTEMA}
+
+Vas a mirar la foto de un diagrama de clases UML y escribir sus órdenes.
+Lee el nombre de cada caja y los atributos que tiene debajo.
+Las líneas entre cajas son relaciones: el triángulo blanco es herencia, el rombo negro es
+composición, el rombo blanco es agregación y una línea simple es asociación.
+Los números de los extremos (1, 0..*, 1..*, *) son la cardinalidad.
+Si un texto no se lee con seguridad, omítelo en lugar de inventarlo.
+
+${describirDiagrama(nodes, edges)}`,
+  },
+  {
+    role: 'user',
+    content: pedido?.trim()
+      ? `${pedido.trim()}\nEscribe las órdenes del diagrama de la imagen.`
+      : 'Escribe las órdenes que reproducen el diagrama de la imagen.',
+    images: [imagenBase64],
+  },
+];
+
 const INICIO_ORDEN = /^(clase|metodo|método|atributo|relacion|relación|herencia|composicion|composición|agregacion|agregación|elimina|renombra|implementa|dependencia)\b/i;
 
 /** Quita markdown, viñetas y texto suelto; deja solo las líneas que son órdenes. */
