@@ -20,6 +20,8 @@ const useBoardState = () => {
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [editModalIsOpen, setEditModalIsOpen] = useState(false);
   const [inviteModalIsOpen, setInviteModalIsOpen] = useState(false);
+  // Enlace de invitación firmado por el servidor (el número de la sala solo no da acceso)
+  const [enlaceInvitacion, setEnlaceInvitacion] = useState(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [xmlContent, setXmlContent] = useState(""); // Nuevo estado para XML
 
@@ -38,6 +40,8 @@ const useBoardState = () => {
     setEditModalIsOpen,
     inviteModalIsOpen,
     setInviteModalIsOpen,
+    enlaceInvitacion,
+    setEnlaceInvitacion,
     inviteEmail,
     setInviteEmail,
     xmlContent,      // Añadir estas
@@ -67,6 +71,8 @@ const Board = () => {
     setEditModalIsOpen,
     inviteModalIsOpen,
     setInviteModalIsOpen,
+    enlaceInvitacion,
+    setEnlaceInvitacion,
     inviteEmail,
     setInviteEmail,
     xmlContent,        // Añadir estas
@@ -407,8 +413,34 @@ const Board = () => {
     }
   };
 
-  const handleCopyLink = (boardId) => {
-    const link = `${window.location.origin}/board/${boardId}`;
+  /** Pide al servidor una invitación firmada para la sala (solo la obtiene el dueño). */
+  const pedirEnlaceInvitacion = async (boardId) => {
+    const base = import.meta.env.VITE_WS_URL || window.location.origin;
+    const res = await fetch(`${base}/apis/colaboracion/${boardId}/invitacion`, { credentials: 'include' });
+    const cuerpo = await res.json().catch(() => null);
+    if (!res.ok || !cuerpo?.data?.token) throw new Error(cuerpo?.message || 'No se pudo crear la invitación.');
+    return `${window.location.origin}/board/${boardId}?invitacion=${encodeURIComponent(cuerpo.data.token)}`;
+  };
+
+  const abrirInvitacion = async (boardId) => {
+    setCurrentBoardId(boardId);
+    setEnlaceInvitacion(null);
+    setInviteModalIsOpen(true);
+    try {
+      setEnlaceInvitacion(await pedirEnlaceInvitacion(boardId));
+    } catch (error) {
+      setEnlaceInvitacion({ error: error.message });
+    }
+  };
+
+  const handleCopyLink = async (boardId) => {
+    let link = typeof enlaceInvitacion === 'string' ? enlaceInvitacion : null;
+    try {
+      if (!link) link = await pedirEnlaceInvitacion(boardId);
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo invitar', text: error.message });
+      return;
+    }
     navigator.clipboard.writeText(link);
     Swal.fire({
       icon: "success",
@@ -580,10 +612,7 @@ const Board = () => {
           <BoardList
             boards={boardList}
             user={user}
-            onInvite={(id) => {
-              setCurrentBoardId(id);
-              setInviteModalIsOpen(true);
-            }}
+            onInvite={(id) => abrirInvitacion(id)}
             onEdit={(board) => {
               setDescription(board.description);
               setCurrentBoardId(board.id);
@@ -610,6 +639,7 @@ const Board = () => {
           handleInviteUser={handleInviteUser}
           handleCopyLink={handleCopyLink}
           currentBoardId={currentBoardId}
+          enlaceInvitacion={enlaceInvitacion}
         />
 
         <Tour

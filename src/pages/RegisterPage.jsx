@@ -28,7 +28,11 @@ const RegisterPage = () => {
       if (token) localStorage.setItem('token', token);
       // La barra superior se actualiza con los datos del perfil
       window.dispatchEvent(new Event('sesion-cambiada'));
-      navigate('/');
+      // Si llegó por un enlace de invitación, vuelve a ese tablero
+      let destino = '/';
+      try { destino = sessionStorage.getItem('volverTrasLogin') || '/'; sessionStorage.removeItem('volverTrasLogin'); } catch { /* noop */ }
+      if (!/^\/(?!\/)/.test(destino)) destino = '/';
+      navigate(destino);
     } catch (error) {
       console.error("Registration error:", error);
       setError(mensajeDeError(error, 'No se pudo crear la cuenta. Intenta de nuevo.'));

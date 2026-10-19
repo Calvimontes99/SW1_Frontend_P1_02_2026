@@ -489,6 +489,9 @@ const UmlEdge = ({
       ? 'drop-shadow(0 2px 6px rgb(220 38 38 / 0.4))'
       : 'drop-shadow(0 1px 2px rgb(0 0 0 / 0.1))'
   };
+  // Vista previa de una propuesta de la IA: verde lo nuevo, naranja lo que cambia, rojo lo que se quita
+  const colorPropuesta = { nueva: '#16a34a', modificada: '#d97706', eliminada: '#dc2626' }[data?._propuesta];
+  if (colorPropuesta) Object.assign(edgeStyle, { stroke: colorPropuesta, strokeWidth: 2.5, strokeDasharray: '6,4' });
 
   // Estilos para el área de click invisible
   const clickAreaStyle = {

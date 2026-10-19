@@ -4,7 +4,48 @@ import { Handle, Position } from '@xyflow/react';
 import '../../../src/index.css';
 import { mostrarAtributo, mostrarMetodo, etiquetaEstereotipo } from '../../utils/umlParser.js';
 
+// Vista previa de la IA: cómo se ve la clase según la propuesta o la revisión
+const ESTILO_PROPUESTA = {
+  nueva: { outline: '3px dashed #16a34a', outlineOffset: 3, opacity: 0.8 },
+  modificada: { outline: '3px dashed #d97706', outlineOffset: 3 },
+  eliminada: { outline: '3px dashed #dc2626', outlineOffset: 3, opacity: 0.55 },
+};
+const ETIQUETA_PROPUESTA = {
+  nueva: ['🤖 Clase nueva propuesta', '#16a34a'],
+  modificada: ['🤖 Cambios propuestos', '#d97706'],
+  eliminada: ['🤖 Se eliminaría', '#dc2626'],
+};
+const COLOR_OBSERVACION = { error: '#dc2626', aviso: '#d97706', sugerencia: '#2563eb' };
+
+function Insignia({ texto, color, titulo }) {
+  return (
+    <div
+      title={titulo}
+      style={{
+        position: 'absolute', top: -22, left: 0, background: color, color: '#fff', fontSize: 10,
+        padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap', maxWidth: 260, overflow: 'hidden',
+        textOverflow: 'ellipsis', boxShadow: '0 1px 3px rgb(0 0 0 / 0.25)', zIndex: 5,
+      }}
+    >
+      {texto}
+    </div>
+  );
+}
+
 function ClassNode({ data, isConnectable }) {
+  const propuesta = data?._propuesta;
+  const cambios = data?._propuestaCambios;
+  const observaciones = Array.isArray(data?._observaciones) ? data._observaciones : [];
+  const peorObservacion = ['error', 'aviso', 'sugerencia'].find((g) => observaciones.some((o) => o.gravedad === g));
+  const estiloVista = propuesta
+    ? ESTILO_PROPUESTA[propuesta]
+    : peorObservacion ? { outline: `3px solid ${COLOR_OBSERVACION[peorObservacion]}`, outlineOffset: 3 } : {};
+  const marca = (texto, nuevo) => (nuevo
+    ? <span style={{ color: '#15803d', fontWeight: 600 }}>+ {texto}</span>
+    : texto);
+  const tachado = (texto, key) => (
+    <li key={key} style={{ color: '#dc2626', textDecoration: 'line-through' }}>{texto}</li>
+  );
   // Opcional: parsear cada atributo si viene con un separador. 
   // Por ejemplo, si guardas "private edad: int", no hace falta transformarlo.
   // Pero si guardas "edad,int,private" tendrías que formatearlo aquí.
@@ -43,7 +84,15 @@ function ClassNode({ data, isConnectable }) {
   }
 
   return (
-    <div className="class-node" style={{ minWidth: 160 }}>
+    <div className="class-node" style={{ minWidth: 160, position: 'relative', ...estiloVista }}>
+      {propuesta && <Insignia texto={ETIQUETA_PROPUESTA[propuesta][0]} color={ETIQUETA_PROPUESTA[propuesta][1]} />}
+      {!propuesta && peorObservacion && (
+        <Insignia
+          texto={`🤖 ${observaciones[0].texto}`}
+          color={COLOR_OBSERVACION[peorObservacion]}
+          titulo={observaciones.map((o) => `• ${o.texto}`).join('\n')}
+        />
+      )}
       {/* Handles para clases normales - Múltiples puntos de conexión */}
       {!data?.isAssociationClass && (
         <>
@@ -215,8 +264,10 @@ function ClassNode({ data, isConnectable }) {
             {etiquetaEstereotipo(data.stereotype)}
           </div>
         )}
-        <strong style={data.stereotype === 'abstract' ? { fontStyle: 'italic' } : undefined}>
-          {data.className || "ClaseSinNombre"}
+        <strong style={{ ...(data.stereotype === 'abstract' ? { fontStyle: 'italic' } : {}), ...(propuesta === 'eliminada' ? { textDecoration: 'line-through' } : {}) }}>
+          {cambios?.nombreNuevo
+            ? <><span style={{ textDecoration: 'line-through', color: '#dc2626' }}>{data.className}</span> <span style={{ color: '#15803d' }}>{cambios.nombreNuevo}</span></>
+            : (data.className || "ClaseSinNombre")}
         </strong>
       </div>
 
@@ -243,17 +294,19 @@ function ClassNode({ data, isConnectable }) {
           }).filter(item => item !== '');
         };
 
-        const normalizedAttributes = normalizeToStringArray(data.attributes);
+        const normalizedAttributes = cambios ? cambios.atributos : normalizeToStringArray(data.attributes);
+        const quitados = cambios ? cambios.atributosQuitados : [];
         
-        return normalizedAttributes.length > 0 && (
+        return (normalizedAttributes.length > 0 || quitados.length > 0) && (
           <div className="class-attributes">
             <h4>{data.stereotype === 'enumeration' ? 'Literales:' : 'Atributos:'}</h4>
             <ul>
               {normalizedAttributes.map((attr, idx) => (
                 <li key={idx}>
-                  {data.stereotype === 'enumeration' ? attr : mostrarAtributo(attr)}
+                  {marca(data.stereotype === 'enumeration' ? attr : mostrarAtributo(attr), cambios?.atributosNuevos.includes(attr))}
                 </li>
               ))}
+              {quitados.map((attr, idx) => tachado(mostrarAtributo(attr), `q${idx}`))}
             </ul>
           </div>
         );
@@ -282,15 +335,17 @@ function ClassNode({ data, isConnectable }) {
           }).filter(item => item !== '');
         };
 
-        const normalizedMethods = normalizeToStringArray(data.methods);
+        const normalizedMethods = cambios ? cambios.metodos : normalizeToStringArray(data.methods);
+        const metodosQuitados = cambios ? cambios.metodosQuitados : [];
         
-        return normalizedMethods.length > 0 && (
+        return (normalizedMethods.length > 0 || metodosQuitados.length > 0) && (
           <div className="class-methods">
             <h4>Métodos:</h4>
             <ul>
               {normalizedMethods.map((method, idx) => (
-                <li key={idx}>{mostrarMetodo(method)}</li>
+                <li key={idx}>{marca(mostrarMetodo(method), cambios?.metodosNuevos.includes(method))}</li>
               ))}
+              {metodosQuitados.map((method, idx) => tachado(mostrarMetodo(method), `qm${idx}`))}
             </ul>
           </div>
         );

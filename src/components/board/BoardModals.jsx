@@ -13,7 +13,8 @@ const BoardModals = ({
  handleEditSubmit,
  handleInviteUser,
  handleCopyLink,
- currentBoardId
+ currentBoardId,
+ enlaceInvitacion
 }) => {
  const { modalIsOpen, editModalIsOpen, inviteModalIsOpen } = modalStates;
  const { closeModal, closeEditModal, closeInviteModal } = modalActions;
@@ -117,16 +118,18 @@ const BoardModals = ({
        <div className="space-y-6">
          <div className="flex flex-col items-center">
            {/* QR Code */}
-           <div className="bg-white p-4 rounded-xl shadow-md mb-4">
-             <QRCodeCanvas
-               value={`${window.location.origin}/board/${currentBoardId}`}
-               size={256}
-               className="rounded-lg"
-             />
+           <div className="bg-white p-4 rounded-xl shadow-md mb-4 min-h-[288px] min-w-[288px] flex items-center justify-center">
+             {typeof enlaceInvitacion === 'string' ? (
+               <QRCodeCanvas value={enlaceInvitacion} size={256} className="rounded-lg" />
+             ) : enlaceInvitacion?.error ? (
+               <p className="text-sm text-red-600 text-center max-w-[240px]">{enlaceInvitacion.error}</p>
+             ) : (
+               <p className="text-sm text-gray-500">Generando invitación…</p>
+             )}
            </div>
            
            <p className="text-sm text-gray-600 mb-4 text-center font-medium">
-             Comparte este código QR o usa el enlace para invitar a otros usuarios
+             Comparte este código QR o el enlace: incluyen una invitación válida por 7 días. Solo con ella se puede entrar al tablero.
            </p>
            
            {/* Botón Copiar Enlace */}

@@ -9,7 +9,7 @@ function NoteNode({ data, isConnectable, selected }) {
     <div 
       className={`note-node ${selected ? 'selected' : ''}`}
       style={{
-        background: '#fffacd', // Color amarillo claro típico de notas
+        background: data?.deIA ? '#e0f2fe' : '#fffacd', // Celeste: idea de la IA; amarillo: nota del equipo
         border: '1px solid #ddd',
         borderRadius: '8px',
         padding: '12px',

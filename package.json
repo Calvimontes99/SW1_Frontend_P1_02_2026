@@ -7,7 +7,8 @@
     "build": "vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test pruebas/sincronia.test.mjs pruebas/revision-recuperacion.test.mjs pruebas/auditoria.test.mjs pruebas/verificacion.test.mjs pruebas/canales.test.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",

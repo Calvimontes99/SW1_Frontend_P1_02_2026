@@ -1,5 +1,5 @@
 // BoardPage.jsx
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import {
   Background,
@@ -8,7 +8,8 @@ import {
   ReactFlowProvider,
   addEdge,
   getSmoothStepPath,
-  Position
+  Position,
+  useReactFlow
 } from "@xyflow/react";
 import { useParams } from "react-router-dom";
 // db removed - switching to Socket.IO based flow for realtime sync
@@ -29,6 +30,10 @@ import { generateCompleteProject } from '../utils/completeProjectGenerator';
 import { verifyUMLDiagramWithAI, validateAICredentials } from '../utils/aiUMLValidator';
 import BurbujaHerramientasDiagrama from '../components/BurbujaHerramientasDiagrama';
 import AiBubble from '../components/AiBubble';
+import ChatSala from '../components/ChatSala';
+import useColaboracion from '../hooks/useColaboracion';
+import { esFantasma, superponerPropuesta } from '../utils/vistaPropuesta';
+import { deshacerSelectivo } from '../utils/deshacerSelectivo';
 import { borrarUsuarioLocal, guardarUsuarioLocal, leerUsuarioLocal } from '../offline/almacenTableros.js';
 import JSZip from 'jszip'
 import { saveAs } from 'file-saver';
@@ -96,6 +101,8 @@ const BoardPage = () => {
       // mostrar un tablero vacio que no guarda nada, mandamos al login.
       if (mounted) {
         try { localStorage.removeItem('token'); } catch (e) { /* noop */ }
+        // Se recuerda el tablero (con su invitación) para volver después de iniciar sesión
+        try { sessionStorage.setItem('volverTrasLogin', window.location.pathname + window.location.search); } catch (e) { /* noop */ }
         borrarUsuarioLocal();
         navigate('/login');
       }
@@ -135,8 +142,47 @@ const BoardPage = () => {
     consumirCambioRemoto,
     setNodes,
       setEdges,
-    conectado
+    conectado,
+    socketUnido,
+    errorAcceso,
+    avisoSincronia,
+    cerrarAvisoSincronia
   } = useSocketFlow(boardId, currentUser);
+
+  // ----- La IA como integrante del equipo: chat de la sala, propuestas y revisiones -----
+  const colaboracion = useColaboracion(socketUnido, boardId ? parseInt(boardId, 10) : null);
+  const [chatAbierto, setChatAbierto] = useState(true);
+  const [revisionOcultaId, setRevisionOcultaId] = useState(null);
+  const [medidasFantasma, setMedidasFantasma] = useState({});
+  const { fitView } = useReactFlow();
+  // Las marcas de una revisión se ven un par de horas o hasta que alguien las quita
+  const revisionVisible = colaboracion.ultimaRevision
+    && colaboracion.ultimaRevision.id !== revisionOcultaId
+    && Date.now() - new Date(colaboracion.ultimaRevision.creadoEn).getTime() < 2 * 60 * 60 * 1000
+    ? colaboracion.ultimaRevision : null;
+  // Lo que se dibuja: el diagrama real más la vista previa de la propuesta (que no se guarda)
+  const { nodos: nodosMostrados, aristas: aristasMostradas } = useMemo(
+    () => superponerPropuesta(nodes, edges, colaboracion.propuestaPendiente, revisionVisible, medidasFantasma),
+    [nodes, edges, colaboracion.propuestaPendiente, revisionVisible, medidasFantasma]
+  );
+  // Los cambios de React Flow sobre la vista previa no llegan al diagrama real
+  const alCambiarNodos = useCallback((cambios) => {
+    const reales = [];
+    const medidas = {};
+    for (const c of cambios) {
+      if (!esFantasma(c.id)) { reales.push(c); continue; }
+      if (c.type === 'dimensions' && c.dimensions) medidas[c.id] = c.dimensions;
+    }
+    if (Object.keys(medidas).length) setMedidasFantasma((prev) => ({ ...prev, ...medidas }));
+    if (reales.length) onNodesChange(reales);
+  }, [onNodesChange]);
+  const alCambiarAristas = useCallback((cambios) => {
+    const reales = cambios.filter((c) => !esFantasma(c.id));
+    if (reales.length) onEdgesChange(reales);
+  }, [onEdgesChange]);
+  const enfocarClase = useCallback((nodoId) => {
+    fitView({ nodes: [{ id: nodoId }], duration: 500, maxZoom: 1.3, padding: 0.6 });
+  }, [fitView]);
 
   // ----- Historial para deshacer y rehacer (Ctrl+Z / Ctrl+Y y las flechas de la barra) -----
   // Se guarda una foto del diagrama por cada cambio; los cambios que llegan de otros
@@ -177,7 +223,8 @@ const BoardPage = () => {
     clearTimeout(temporizadorHistorialRef.current);
     temporizadorHistorialRef.current = setTimeout(() => {
       if (foto === fotoActualRef.current) return;
-      historialRef.current = [...historialRef.current, fotoActualRef.current].slice(-LIMITE_HISTORIAL);
+      // Cada entrada es un cambio propio: la foto de antes y la de después
+      historialRef.current = [...historialRef.current, { antes: fotoActualRef.current, despues: foto }].slice(-LIMITE_HISTORIAL);
       futuroRef.current = [];
       fotoActualRef.current = foto;
       setPuedeDeshacer(true);
@@ -186,41 +233,58 @@ const BoardPage = () => {
     return () => clearTimeout(temporizadorHistorialRef.current);
   }, [nodes, edges, consumirCambioRemoto, fotografiar]);
 
-  const aplicarFoto = useCallback((foto) => {
-    let estado;
+  // Estado actual para deshacer sobre lo que hay ahora (con los cambios de los demás)
+  const estadoActualRef = useRef({ nodes, edges });
+  estadoActualRef.current = { nodes, edges };
+
+  /**
+   * Revierte un cambio propio sobre el estado actual: lo que otra persona tocó después no se pisa.
+   * Deshacer: de "después" a "antes"; rehacer: al revés.
+   */
+  const revertirCambio = useCallback((desde, hacia) => {
+    let antes;
+    let despues;
     try {
-      estado = JSON.parse(foto);
+      antes = JSON.parse(hacia);
+      despues = JSON.parse(desde);
     } catch {
       return;
     }
+    const { estado, omitidos, revertidos } = deshacerSelectivo(estadoActualRef.current, antes, despues);
     aplicandoHistorialRef.current = true;
     clearTimeout(temporizadorHistorialRef.current);
-    fotoActualRef.current = foto;
-    setNodes(estado.nodes || []);
-    setEdges(estado.edges || []);
+    fotoActualRef.current = fotografiar(estado.nodes, estado.edges);
+    setNodes(estado.nodes);
+    setEdges(estado.edges);
     setSelectedEdge(null);
     setUnsaved(true);
-    // Los demás participantes ven el cambio al instante
-    if (updateBoardData) updateBoardData({ nodes: estado.nodes || [], edges: estado.edges || [] });
-  }, [setNodes, setEdges, setSelectedEdge, updateBoardData]);
+    if (omitidos > 0) {
+      Swal.fire({
+        toast: true, position: 'bottom', timer: 3500, showConfirmButton: false, icon: 'info',
+        title: revertidos > 0
+          ? `Se deshizo tu cambio, salvo ${omitidos} elemento${omitidos === 1 ? '' : 's'} que otra persona modificó después.`
+          : 'No se deshizo: otra persona modificó esos elementos después de tu cambio.'
+      });
+    }
+  }, [fotografiar, setNodes, setEdges, setSelectedEdge]);
 
   const deshacer = useCallback(() => {
-    const anterior = historialRef.current.pop();
-    if (!anterior) { setPuedeDeshacer(false); return; }
-    if (fotoActualRef.current) futuroRef.current.push(fotoActualRef.current);
-    aplicarFoto(anterior);
+    const entrada = historialRef.current.pop();
+    if (!entrada) { setPuedeDeshacer(false); return; }
+    futuroRef.current.push(entrada);
+    revertirCambio(entrada.despues, entrada.antes);
     setPuedeDeshacer(historialRef.current.length > 0);
     setPuedeRehacer(true);
-  }, [aplicarFoto]);
+  }, [revertirCambio]);
 
   const rehacer = useCallback(() => {
-    const siguiente = futuroRef.current.pop();
-    if (!siguiente) { setPuedeRehacer(false); return; }
-    if (fotoActualRef.current) historialRef.current.push(fotoActualRef.current);
-    aplicarFoto(siguiente);
+    const entrada = futuroRef.current.pop();
+    if (!entrada) { setPuedeRehacer(false); return; }
+    historialRef.current.push(entrada);
+    revertirCambio(entrada.antes, entrada.despues);
     setPuedeRehacer(futuroRef.current.length > 0);
     setPuedeDeshacer(true);
-  }, [aplicarFoto]);
+  }, [revertirCambio]);
 
   useEffect(() => {
     const escribiendo = (el) => !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
@@ -339,6 +403,17 @@ const BoardPage = () => {
 
   // Función para verificar diagrama UML con IA
   const handleVerifyDiagramAI = async () => {
+    // Con conexión, la revisión la hace la IA del equipo en el chat: todos la ven y marca las clases
+    if (socketUnido) {
+      if (!nodes.length) {
+        Swal.fire({ icon: 'info', title: 'Diagrama vacío', text: 'No hay clases en el diagrama para verificar.' });
+        return;
+      }
+      setChatAbierto(true);
+      const r = await colaboracion.enviar('Revisa el diagrama completo y dime qué corregir', true);
+      if (!r?.ok) Swal.fire({ icon: 'error', title: 'No se pudo pedir la revisión', text: r?.mensaje || 'Revisa tu conexión.' });
+      return;
+    }
     try {
       // Validar que hay un diagrama para verificar
       if (!nodes.length) {
@@ -1516,7 +1591,23 @@ const BoardPage = () => {
 
     {/* Contenido principal a la derecha */}
     <div className="flex-1 flex flex-col">
-      {currentUser && !conectado && (
+      {errorAcceso && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="max-w-md rounded-xl bg-white p-6 text-center shadow-2xl">
+            <p className="text-3xl">🔒</p>
+            <h2 className="mt-2 text-lg font-semibold">No puedes abrir este tablero</h2>
+            <p className="mt-2 text-sm text-gray-600">{errorAcceso}</p>
+            <button onClick={() => navigate('/board')} className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Ir a mis tableros</button>
+          </div>
+        </div>
+      )}
+      {avisoSincronia && (
+        <div className="px-3 py-1.5 text-xs bg-amber-100 text-amber-900 border-b border-amber-200 flex justify-between gap-2">
+          <span>{avisoSincronia}</span>
+          <button onClick={cerrarAvisoSincronia} aria-label="Cerrar aviso">✕</button>
+        </div>
+      )}
+      {currentUser && !conectado && !errorAcceso && (
         <div className="px-3 py-1.5 text-xs bg-amber-100 text-amber-900 border-b border-amber-200">
           Sin conexión con el servidor: los cambios se guardan en este equipo y se sincronizan al reconectar. La IA local sigue disponible.
         </div>
@@ -1686,8 +1777,15 @@ const BoardPage = () => {
             EAP
           </button>
 
-          {/* Usuarios activos */}
+          {/* Usuarios activos (la IA es un integrante más) */}
           <ActiveUsers users={activeUsers} />
+          <div
+            className={`px-2 py-1 rounded-full text-xs flex items-center ${colaboracion.estadoIA.ocupada ? 'bg-violet-200 text-violet-900' : 'bg-violet-100 text-violet-800'}`}
+            title={colaboracion.estadoIA.ocupada ? `Atendiendo a ${colaboracion.estadoIA.atendiendoA}` : 'La IA del equipo: escríbele con @IA en el chat'}
+          >
+            <span className={`w-2 h-2 rounded-full mr-2 ${colaboracion.estadoIA.ocupada ? 'bg-violet-600 animate-pulse' : 'bg-violet-500'}`}></span>
+            🤖 IA{colaboracion.estadoIA.ocupada ? ' pensando…' : ''}
+          </div>
           {/* Debug: button to dump recent socket events and current edges */}
           <button
             onClick={() => {
@@ -1726,13 +1824,13 @@ const BoardPage = () => {
       <div className="flex-1">
         <ReactFlow
           data-tour="lienzo"
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          nodes={nodosMostrados}
+          edges={aristasMostradas}
+          onNodesChange={alCambiarNodos}
+          onEdgesChange={alCambiarAristas}
           onConnect={onConnect}
-          onNodeClick={(_, node) => handleNodeSelection(node)}
-          onEdgeClick={(_, edge) => handleEdgeSelection(edge)}
+          onNodeClick={(_, node) => { if (!esFantasma(node.id)) handleNodeSelection(nodes.find((n) => n.id === node.id) || node); }}
+          onEdgeClick={(_, edge) => { if (!esFantasma(edge.id)) handleEdgeSelection(edges.find((e) => e.id === edge.id) || edge); }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
@@ -1751,7 +1849,22 @@ const BoardPage = () => {
         </ReactFlow>
       </div>
       
+      {/* Chat del equipo con la IA compartida */}
+      {currentUser && (
+        <ChatSala
+          colaboracion={colaboracion}
+          currentUser={currentUser}
+          onEnfocarClase={enfocarClase}
+          onQuitarMarcas={() => setRevisionOcultaId(colaboracion.ultimaRevision?.id ?? null)}
+          abierto={chatAbierto}
+          setAbierto={setChatAbierto}
+        />
+      )}
+
       {/* Burbuja de herramientas */}
+      {/* IA individual: solo sin conexión con el servidor (IA local del navegador). Con conexión, toda
+          la IA pasa por el chat del equipo: una sola IA, a la vista de todos y con propuestas. */}
+      {!socketUnido && !errorAcceso && (
       <AiBubble
         boardId={boardId}
         nodes={nodes}
@@ -1761,6 +1874,7 @@ const BoardPage = () => {
         updateBoardData={updateBoardData}
         onAiModificationChange={setAiModificationActive}
       />
+      )}
 
       <BurbujaHerramientasDiagrama
         nodes={nodes}

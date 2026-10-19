@@ -28,7 +28,11 @@ const LoginPage = () => {
       if (token) localStorage.setItem('token', token);
       // La barra superior se actualiza con los datos del perfil
       window.dispatchEvent(new Event('sesion-cambiada'));
-      navigate('/');
+      // Si llegó por un enlace de invitación, vuelve a ese tablero
+      let destino = '/';
+      try { destino = sessionStorage.getItem('volverTrasLogin') || '/'; sessionStorage.removeItem('volverTrasLogin'); } catch { /* noop */ }
+      if (!/^\/(?!\/)/.test(destino)) destino = '/';
+      navigate(destino);
     } catch (err) {
       setError(mensajeDeError(err, 'No se pudo iniciar sesión. Intenta de nuevo.'));
     }
